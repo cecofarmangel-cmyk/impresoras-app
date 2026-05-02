@@ -1,12 +1,12 @@
 [
     {
-        "id": "P001",
-        "serial": "SN123456789",
-        "model": "HP LaserJet Pro M402dn",
-        "location": "Oficina Dirección",
-        "tonerType": "HP 26X",
-        "averiaEmail": "soporte@tuempresa.com",
-        "tonerEmail": "compras@tuempresa.com"
+        "id": "IM001",
+        "serial": "4064433113CMN",
+        "model": "ESTUDIO 528P",
+        "location": "SALIDA DE RUTAS CONDUCTORES",
+        "tonerType": "NEGRO",
+        "averiaEmail": "avisos@printsur.com",
+        "tonerEmail": "avisos@printsur.com"
     },
     {
         "id": "P002",
