@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Escanear QR - Averías y Tóner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📷 Escáner de Impresoras</h1>
+            <p>Escanea el código QR de la impresora</p>
+            <a href="../" class="back-link">← Volver</a>
+        </header>
+
+        <div class="scanner-container">
+            <div id="qr-reader" class="scanner-window"></div>
+            
+            <div class="info-panel">
+                <div id="scanner-status" class="status">
+                    🔍 Esperando escaneo...
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📌 Instrucciones:</h3>
+            <ul>
+                <li>Escanea el QR <strong>ROJO</strong> para reportar una AVERÍA</li>
+                <li>Escanea el QR <strong>VERDE</strong> para pedir TÓNER</li>
+                <li>Automáticamente se abrirá tu correo con toda la información</li>
+                <li>Solo necesitas enviar el mensaje</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

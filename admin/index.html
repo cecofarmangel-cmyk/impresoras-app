@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Impresoras</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ Panel de Administración</h1>
+            <p>Gestión de impresoras y generación de códigos QR</p>
+            <a href="../" class="back-link">← Volver al inicio</a>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('add')">➕ Agregar Impresora</button>
+            <button class="tab-btn" onclick="showTab('list')">📋 Lista de Impresoras</button>
+            <button class="tab-btn" onclick="showTab('generate')">🔲 Generar QR</button>
+        </div>
+
+        <!-- Pestaña Agregar Impresora -->
+        <div id="add-tab" class="tab-content active">
+            <h2>Agregar nueva impresora</h2>
+            <form id="printer-form">
+                <div class="form-group">
+                    <label>ID de la impresora:</label>
+                    <input type="text" id="printer-id" placeholder="Ej: P001, P002, LAB01" required>
+                    <small>Identificador único para el QR (3-10 caracteres)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Número de serie:</label>
+                    <input type="text" id="serial-number" placeholder="Ej: SN123456789" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Modelo:</label>
+                    <input type="text" id="model" placeholder="Ej: HP LaserJet Pro M402dn" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Ubicación:</label>
+                    <input type="text" id="location" placeholder="Ej: Oficina 3, Recepción" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tipo de tóner:</label>
+                    <input type="text" id="toner-type" placeholder="Ej: HP 26X, Brother TN-760" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Correo para averías:</label>
+                    <input type="email" id="averia-email" value="soporte@tuempresa.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Correo para tóner:</label>
+                    <input type="email" id="toner-email" value="compras@tuempresa.com" required>
+                </div>
+                
+                <button type="submit" class="btn-submit">✅ Guardar Impresora</button>
+            </form>
+        </div>
+
+        <!-- Pestaña Lista de Impresoras -->
+        <div id="list-tab" class="tab-content">
+            <h2>Impresoras registradas</h2>
+            <div id="printers-list" class="printers-grid">
+                <!-- Se llena con JavaScript -->
+            </div>
+        </div>
+
+        <!-- Pestaña Generar QR -->
+        <div id="generate-tab" class="tab-content">
+            <h2>Generar códigos QR</h2>
+            <div class="generate-section">
+                <label>Seleccionar impresora:</label>
+                <select id="qr-printer-select">
+                    <option value="">-- Selecciona una impresora --</option>
+                </select>
+                
+                <div class="qr-options">
+                    <button class="btn-generate" onclick="generateQR('averia')">
+                        🔴 Generar QR para AVERÍA
+                    </button>
+                    <button class="btn-generate" onclick="generateQR('toner')">
+                        🟢 Generar QR para TÓNER
+                    </button>
+                </div>
+                
+                <div id="qr-result" class="qr-result">
+                    <!-- Aquí se muestran los QR generados -->
+                </div>
+                
+                <div class="batch-actions">
+                    <button class="btn-batch" onclick="generateAllQRs()">
+                        📦 Generar TODOS los QR (2 por impresora)
+                    </button>
+                    <button class="btn-batch" onclick="downloadAllQRs()">
+                        💾 Descargar todos los QR en ZIP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="qr-generator.js"></script>
+</body>
+</html>

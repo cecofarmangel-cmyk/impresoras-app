@@ -1,0 +1,20 @@
+[
+    {
+        "id": "P001",
+        "serial": "SN123456789",
+        "model": "HP LaserJet Pro M402dn",
+        "location": "Oficina Dirección",
+        "tonerType": "HP 26X",
+        "averiaEmail": "soporte@tuempresa.com",
+        "tonerEmail": "compras@tuempresa.com"
+    },
+    {
+        "id": "P002",
+        "serial": "SN987654321",
+        "model": "Brother HL-L2350DW",
+        "location": "Recepción",
+        "tonerType": "Brother TN-760",
+        "averiaEmail": "soporte@tuempresa.com",
+        "tonerEmail": "compras@tuempresa.com"
+    }
+]
