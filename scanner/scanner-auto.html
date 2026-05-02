@@ -1,139 +1,75 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirigiendo al correo...</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .container {
-            text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            max-width: 400px;
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .success { color: #27ae60; }
-        .error { color: #e74c3c; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h2>Procesando solicitud...</h2>
-        <p id="message">Preparando correo electrónico...</p>
-    </div>
-
-    <script>
-        // Obtener el ID de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const qrData = urlParams.get('qr');
+<script>
+    // Obtener el ID de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const qrData = urlParams.get('qr');
+    
+    if (!qrData) {
+        document.getElementById('message').innerHTML = '<span class="error">❌ QR inválido</span><br>No se encontró información en el código.';
+        document.querySelector('.spinner').style.display = 'none';
+    } else {
+        // Parsear el QR (formato: TIPO|ID)
+        const parts = qrData.split('|');
         
-        if (!qrData) {
-            document.getElementById('message').innerHTML = '<span class="error">❌ QR inválido</span><br>No se encontró información en el código.';
+        if (parts.length !== 2) {
+            document.getElementById('message').innerHTML = '<span class="error">❌ Error: Formato de QR incorrecto</span>';
             document.querySelector('.spinner').style.display = 'none';
         } else {
-            // Parsear el QR (formato: TIPO|ID)
-            const parts = qrData.split('|');
+            const [tipo, printerId] = parts;
             
-            if (parts.length !== 2) {
-                document.getElementById('message').innerHTML = '<span class="error">� Error: Formato de QR incorrecto</span>';
-                document.querySelector('.spinner').style.display = 'none';
-            } else {
-                const [tipo, printerId] = parts;
-                
-                // Cargar impresoras desde localStorage
-                let printersDB = {};
-                const stored = localStorage.getItem('impresoras');
-                
-                if (stored) {
-                    const printers = JSON.parse(stored);
-                    printers.forEach(printer => {
-                        printersDB[printer.id] = printer;
-                    });
-                } else {
-                    // Datos de ejemplo
-                    printersDB = {
-                        "P001": {
-                            id: "P001",
-                            model: "HP LaserJet Pro M402dn",
-                            serial: "SN123456",
-                            location: "Oficina 3",
-                            tonerType: "HP 26X",
-                            averiaEmail: "soporte@tuempresa.com",
-                            tonerEmail: "compras@tuempresa.com"
-                        }
-                    };
-                }
-                
-                const printer = printersDB[printerId];
-                
-                if (!printer) {
-                    document.getElementById('message').innerHTML = `<span class="error">❌ Impresora ${printerId} no encontrada</span><br>Verifica que la impresora esté registrada en el sistema.`;
-                    document.querySelector('.spinner').style.display = 'none';
-                } else {
-                    // Construir y enviar correo
-                    if (tipo === 'AVERIA') {
-                        enviarCorreoAveria(printer);
-                    } else if (tipo === 'TONER') {
-                        enviarCorreoToner(printer);
-                    } else {
-                        document.getElementById('message').innerHTML = `<span class="error">❌ Tipo de solicitud desconocido: ${tipo}</span>`;
+            // Cargar impresoras desde el archivo JSON
+            fetch('../data/impresoras.json')
+                .then(response => response.json())
+                .then(printers => {
+                    const printer = printers.find(p => p.id === printerId);
+                    
+                    if (!printer) {
+                        document.getElementById('message').innerHTML = `<span class="error">❌ Impresora ${printerId} no encontrada</span><br>Verifica que la impresora esté registrada en el sistema.`;
                         document.querySelector('.spinner').style.display = 'none';
+                    } else {
+                        // Según el tipo, enviar correo
+                        if (tipo === 'AVERIA') {
+                            enviarCorreoAveria(printer);
+                        } else if (tipo === 'TONER') {
+                            enviarCorreoToner(printer);
+                        } else {
+                            document.getElementById('message').innerHTML = `<span class="error">❌ Tipo de solicitud desconocido: ${tipo}</span>`;
+                            document.querySelector('.spinner').style.display = 'none';
+                        }
                     }
-                }
-            }
+                })
+                .catch(error => {
+                    console.error('Error cargando impresoras:', error);
+                    document.getElementById('message').innerHTML = '<span class="error">❌ Error al cargar la base de datos de impresoras</span>';
+                    document.querySelector('.spinner').style.display = 'none';
+                });
         }
+    }
+    
+    function enviarCorreoAveria(printer) {
+        const destinatario = printer.averiaEmail;
+        const asunto = `AVERÍA - ${printer.model} - Serie: ${printer.serial}`;
+        const cuerpo = `%0A%0A=========================================%0A📠 REPORTE DE AVERÍA EN IMPRESORA%0A=========================================%0A%0A🖨️ MODELO: ${printer.model}%0A🔢 SERIE: ${printer.serial}%0A📍 UBICACIÓN: ${printer.location}%0A%0A─────────────────────────────────────────%0A⚠️ DESCRIPCIÓN DEL PROBLEMA:%0A─────────────────────────────────────────%0A%0A[Escribe aquí la avería]%0A%0A─────────────────────────────────────────%0A📅 FECHA: ${new Date().toLocaleString('es-ES')}%0A👤 REPORTADO POR: [Tu nombre]%0A%0A=========================================`;
         
-        function enviarCorreoAveria(printer) {
-            const destinatario = printer.averiaEmail;
-            const asunto = `AVERÍA - ${printer.model} - Serie: ${printer.serial}`;
-            const cuerpo = `%0A%0A=========================================%0A📠 REPORTE DE AVERÍA EN IMPRESORA%0A=========================================%0A%0A🖨️ MODELO: ${printer.model}%0A🔢 SERIE: ${printer.serial}%0A📍 UBICACIÓN: ${printer.location}%0A%0A─────────────────────────────────────────%0A⚠️ DESCRIPCIÓN DEL PROBLEMA:%0A─────────────────────────────────────────%0A%0A[Escribe aquí la avería]%0A%0A─────────────────────────────────────────%0A📅 FECHA: ${new Date().toLocaleString('es-ES')}%0A👤 REPORTADO POR: [Tu nombre]%0A%0A=========================================`;
-            
-            const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${cuerpo}`;
-            
-            document.getElementById('message').innerHTML = '<span class="success">✅ Redirigiendo al correo...</span><br>Se abrirá tu aplicación de correo.';
-            
-            setTimeout(() => {
-                window.location.href = mailtoURL;
-            }, 1000);
-        }
+        const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${cuerpo}`;
         
-        function enviarCorreoToner(printer) {
-            const destinatario = printer.tonerEmail;
-            const asunto = `PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`;
-            const cuerpo = `%0A%0A=========================================%0A🖨️ SOLICITUD DE TÓNER%0A=========================================%0A%0A🖨️ MODELO: ${printer.model}%0A🔢 SERIE: ${printer.serial}%0A📍 UBICACIÓN: ${printer.location}%0A📦 TÓNER: ${printer.tonerType}%0A%0A─────────────────────────────────────────%0A📊 CANTIDAD SOLICITADA:%0A─────────────────────────────────────────%0A%0A[ ] 1 unidad%0A[ ] 2 unidades%0A%0A─────────────────────────────────────────%0A📅 FECHA: ${new Date().toLocaleString('es-ES')}%0A👤 SOLICITADO POR: [Tu nombre]%0A%0A=========================================`;
-            
-            const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${cuerpo}`;
-            
-            document.getElementById('message').innerHTML = '<span class="success">✅ Redirigiendo al correo...</span><br>Se abrirá tu aplicación de correo.';
-            
-            setTimeout(() => {
-                window.location.href = mailtoURL;
-            }, 1000);
-        }
-    </script>
-</body>
-</html>
+        document.getElementById('message').innerHTML = '<span class="success">✅ Redirigiendo al correo...</span><br>Se abrirá tu aplicación de correo.';
+        
+        setTimeout(() => {
+            window.location.href = mailtoURL;
+        }, 1000);
+    }
+    
+    function enviarCorreoToner(printer) {
+        const destinatario = printer.tonerEmail;
+        const asunto = `PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`;
+        const cuerpo = `%0A%0A=========================================%0A🖨️ SOLICITUD DE TÓNER%0A=========================================%0A%0A🖨️ MODELO: ${printer.model}%0A🔢 SERIE: ${printer.serial}%0A📍 UBICACIÓN: ${printer.location}%0A📦 TÓNER: ${printer.tonerType}%0A%0A─────────────────────────────────────────%0A📊 CANTIDAD SOLICITADA:%0A─────────────────────────────────────────%0A%0A[ ] 1 unidad%0A[ ] 2 unidades%0A%0A─────────────────────────────────────────%0A📅 FECHA: ${new Date().toLocaleString('es-ES')}%0A👤 SOLICITADO POR: [Tu nombre]%0A%0A=========================================`;
+        
+        const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${cuerpo}`;
+        
+        document.getElementById('message').innerHTML = '<span class="success">✅ Redirigiendo al correo...</span><br>Se abrirá tu aplicación de correo.';
+        
+        setTimeout(() => {
+            window.location.href = mailtoURL;
+        }, 1000);
+    }
+</script>
