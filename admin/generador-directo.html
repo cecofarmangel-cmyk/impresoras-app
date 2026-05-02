@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador QR Directo</title>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        select, button {
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .qr-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .qr-item {
+            display: inline-block;
+            margin: 20px;
+            text-align: center;
+        }
+        button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #219a52;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔲 Generador Directo de QR</h1>
+        <p>Selecciona una impresora y genera su QR para AVERÍA o TÓNER</p>
+        
+        <label>Impresora:</label>
+        <select id="printer-select">
+            <option value="">Cargando...</option>
+        </select>
+        
+        <br><br>
+        
+        <button onclick="generateQR('averia')">🔴 Generar QR AVERÍA</button>
+        <button onclick="generateQR('toner')">🟢 Generar QR TÓNER</button>
+        
+        <div id="qr-result" class="qr-container"></div>
+    </div>
+
+    <script>
+        let printers = [];
+        let qrCache = {};
+        
+        // Cargar impresoras desde el JSON central
+        async function loadPrinters() {
+            const response = await fetch('../data/impresoras.json');
+            printers = await response.json();
+            
+            const select = document.getElementById('printer-select');
+            select.innerHTML = '<option value="">-- Selecciona impresora --</option>';
+            
+            printers.forEach(printer => {
+                const option = document.createElement('option');
+                option.value = printer.id;
+                option.textContent = `${printer.id} - ${printer.model} (${printer.location})`;
+                select.appendChild(option);
+            });
+        }
+        
+        // Generar QR
+        async function generateQR(type) {
+            const printerId = document.getElementById('printer-select').value;
+            
+            if (!printerId) {
+                alert('❌ Selecciona una impresora');
+                return;
+            }
+            
+            const printer = printers.find(p => p.id === printerId);
+            if (!printer) return;
+            
+            const qrContent = `${type.toUpperCase()}|${printer.id}`;
+            const baseURL = window.location.origin.replace('/admin', '') + '/scanner/scanner-auto.html';
+            const fullURL = `${baseURL}?qr=${encodeURIComponent(qrContent)}`;
+            
+            const container = document.getElementById('qr-result');
+            container.innerHTML = '';
+            
+            const qrDiv = document.createElement('div');
+            qrDiv.className = 'qr-item';
+            
+            const qrCodeDiv = document.createElement('div');
+            qrDiv.appendChild(qrCodeDiv);
+            
+            // Generar QR
+            new QRCode(qrCodeDiv, {
+                text: fullURL,
+                width: 250,
+                height: 250,
+                colorDark: "#000000",
+                colorLight: "#ffffff"
+            });
+            
+            const title = type === 'averia' ? '🔴 AVERÍA' : '🟢 TÓNER';
+            qrDiv.innerHTML += `
+                <p><strong>${title}</strong></p>
+                <p><strong>${printer.id}</strong> - ${printer.model}</p>
+                <p style="font-size:12px; color:#666;">${printer.location}</p>
+                <button onclick="downloadQR()" style="margin-top:10px;">💾 Descargar QR</button>
+            `;
+            
+            // Guardar referencia
+            setTimeout(() => {
+                const canvas = qrCodeDiv.querySelector('canvas');
+                if (canvas) {
+                    qrCache.current = canvas;
+                }
+            }, 100);
+            
+            container.appendChild(qrDiv);
+        }
+        
+        function downloadQR() {
+            if (qrCache.current) {
+                const link = document.createElement('a');
+                link.download = `qr.png`;
+                link.href = qrCache.current.toDataURL('image/png');
+                link.click();
+            } else {
+                alert('Espera a que se genere el QR');
+            }
+        }
+        
+        // Cargar al inicio
+        loadPrinters();
+    </script>
+</body>
+</html>
