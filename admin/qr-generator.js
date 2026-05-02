@@ -1,3 +1,6 @@
+// Variables globales
+let qrCache = {};
+
 // Generar QR individual
 async function generateQR(type) {
     const printerId = document.getElementById('qr-printer-select').value;
@@ -10,66 +13,16 @@ async function generateQR(type) {
     const printer = printers.find(p => p.id === printerId);
     if (!printer) return;
     
-    // Crear el enlace mailto directamente
-    let mailtoURL = '';
+    // Contenido del QR: TIPO|ID (corto y simple)
+    const qrContent = `${type.toUpperCase()}|${printer.id}`;
     
-    if (type === 'averia') {
-        const asunto = encodeURIComponent(`AVERÍA - ${printer.model} - Serie: ${printer.serial}`);
-        const cuerpo = encodeURIComponent(`
-=========================================
-📠 REPORTE DE AVERÍA EN IMPRESORA
-=========================================
-
-🖨️ MODELO: ${printer.model}
-🔢 NÚMERO DE SERIE: ${printer.serial}
-📍 UBICACIÓN: ${printer.location}
-
-─────────────────────────────────────────
-⚠️ DESCRIPCIÓN DEL PROBLEMA:
-─────────────────────────────────────────
-
-[Describe aquí la avería]
-
-─────────────────────────────────────────
-📅 FECHA: ${new Date().toLocaleString('es-ES')}
-👤 REPORTADO POR: [Tu nombre]
-
-=========================================`);
-        
-        mailtoURL = `mailto:${printer.averiaEmail}?subject=${asunto}&body=${cuerpo}`;
-    } else {
-        const asunto = encodeURIComponent(`PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`);
-        const cuerpo = encodeURIComponent(`
-=========================================
-🖨️ SOLICITUD DE TÓNER
-=========================================
-
-🖨️ MODELO: ${printer.model}
-🔢 NÚMERO DE SERIE: ${printer.serial}
-📍 UBICACIÓN: ${printer.location}
-📦 TÓNER COMPATIBLE: ${printer.tonerType}
-
-─────────────────────────────────────────
-📊 CANTIDAD SOLICITADA:
-─────────────────────────────────────────
-
-[ ] 1 unidad
-[ ] 2 unidades
-[ ] Otros: _______
-
-─────────────────────────────────────────
-📅 FECHA: ${new Date().toLocaleString('es-ES')}
-👤 SOLICITADO POR: [Tu nombre]
-
-=========================================`);
-        
-        mailtoURL = `mailto:${printer.tonerEmail}?subject=${asunto}&body=${cuerpo}`;
-    }
+    // URL de la página que procesará el QR
+    const baseURL = window.location.origin + window.location.pathname.replace('/admin/', '/scanner/scanner-auto.html');
+    const fullURL = `${baseURL}?qr=${encodeURIComponent(qrContent)}`;
     
     const container = document.getElementById('qr-result');
     container.innerHTML = '';
     
-    // Crear contenedor
     const qrDiv = document.createElement('div');
     qrDiv.className = 'qr-item';
     qrDiv.style.textAlign = 'center';
@@ -80,36 +33,28 @@ async function generateQR(type) {
     qrDiv.style.display = 'inline-block';
     qrDiv.style.margin = '10px';
     
-    // Crear canvas para QR
     const canvas = document.createElement('canvas');
     canvas.id = `qr-${Date.now()}`;
     qrDiv.appendChild(canvas);
     
-    // Generar QR con el mailto URL
     try {
-        await QRCode.toCanvas(canvas, mailtoURL, {
+        // Generar QR con la URL completa
+        await QRCode.toCanvas(canvas, fullURL, {
             width: 250,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
+            margin: 2
         });
         
         const title = type === 'averia' ? '🔴 AVERÍA' : '🟢 TÓNER';
         qrDiv.innerHTML += `
             <p><strong>${title}</strong></p>
-            <p><strong>ID:</strong> ${printer.id}</p>
-            <p><strong>Modelo:</strong> ${printer.model}</p>
-            <p style="font-size:12px; color:#666; word-break:break-all;">📧 Al escanear: Abre correo automáticamente</p>
-            <button onclick="downloadSingleQR('${printer.id}_${type}')" style="margin-top:15px; padding:10px 20px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">
+            <p><strong>${printer.id}</strong> - ${printer.model}</p>
+            <p style="font-size:11px; color:#27ae60;">✅ Escanea con cualquier lector QR</p>
+            <button onclick="downloadSingleQR('${printer.id}_${type}')" style="margin-top:10px; padding:8px 15px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer;">
                 💾 Descargar QR
             </button>
         `;
         
-        // Guardar referencia al canvas
         qrCache[`${printer.id}_${type}`] = canvas;
-        
         container.appendChild(qrDiv);
     } catch (error) {
         console.error('Error:', error);
@@ -117,7 +62,20 @@ async function generateQR(type) {
     }
 }
 
-// Generar TODOS los QR (versión con mailto)
+// Descargar QR individual
+function downloadSingleQR(filename) {
+    const canvas = qrCache[filename];
+    if (canvas) {
+        const link = document.createElement('a');
+        link.download = `${filename}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    } else {
+        alert('Error: No se encontró el QR. Genéralo de nuevo.');
+    }
+}
+
+// Generar todos los QR
 async function generateAllQRs() {
     if (printers.length === 0) {
         alert('❌ No hay impresoras registradas');
@@ -128,26 +86,20 @@ async function generateAllQRs() {
     container.innerHTML = '<h3>📦 Generando todos los QR...</h3><div id="qr-list-container" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; margin-top:20px;"></div>';
     const qrList = document.getElementById('qr-list-container');
     
-    let count = 0;
-    const total = printers.length * 2;
+    const baseURL = window.location.origin + window.location.pathname.replace('/admin/', '/scanner/scanner-auto.html');
     
     for (const printer of printers) {
-        // Generar QR Avería
-        await generateAndAppendQRMailto(printer, 'averia', '🔴 AVERÍA', qrList);
-        count++;
-        
-        // Generar QR Tóner
-        await generateAndAppendQRMailto(printer, 'toner', '🟢 TÓNER', qrList);
-        count++;
-        
-        container.innerHTML = `<h3>📦 Generando QR... (${count}/${total})</h3>`;
+        // Avería
+        await generateAndAppendQRSimple(printer, 'averia', '🔴 AVERÍA', baseURL, qrList);
+        // Tóner
+        await generateAndAppendQRSimple(printer, 'toner', '🟢 TÓNER', baseURL, qrList);
     }
     
     container.innerHTML = `
-        <h3>✅ Todos los QR generados (${total})</h3>
+        <h3>✅ Todos los QR generados</h3>
         <div id="qr-list-container" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; margin-top:20px;"></div>
         <div style="text-align:center; margin-top:30px;">
-            <button onclick="downloadAllQRsAsZip()" style="padding:12px 25px; background:#e74c3c; color:white; border:none; border-radius:8px; cursor:pointer; font-size:16px;">
+            <button onclick="downloadAllQRsAsZip()" style="padding:12px 25px; background:#e74c3c; color:white; border:none; border-radius:8px; cursor:pointer;">
                 📦 DESCARGAR TODOS EN ZIP
             </button>
         </div>
@@ -159,71 +111,52 @@ async function generateAllQRs() {
     }
 }
 
-// Generar QR con mailto
-async function generateAndAppendQRMailto(printer, type, title, container) {
+async function generateAndAppendQRSimple(printer, type, title, baseURL, container) {
     return new Promise(async (resolve) => {
-        // Construir mailto URL
-        let mailtoURL = '';
-        
-        if (type === 'averia') {
-            const asunto = encodeURIComponent(`AVERÍA - ${printer.model} - Serie: ${printer.serial}`);
-            const cuerpo = encodeURIComponent(`
-📠 AVERÍA EN IMPRESORA
-Modelo: ${printer.model}
-Serie: ${printer.serial}
-Ubicación: ${printer.location}
-Reportado por: [Tu nombre]`);
-            
-            mailtoURL = `mailto:${printer.averiaEmail}?subject=${asunto}&body=${cuerpo}`;
-        } else {
-            const asunto = encodeURIComponent(`PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`);
-            const cuerpo = encodeURIComponent(`
-🖨️ SOLICITUD TÓNER
-Modelo: ${printer.model}
-Serie: ${printer.serial}
-Tóner: ${printer.tonerType}
-Cantidad: 1 unidad`);
-            
-            mailtoURL = `mailto:${printer.tonerEmail}?subject=${asunto}&body=${cuerpo}`;
-        }
+        const qrContent = `${type.toUpperCase()}|${printer.id}`;
+        const fullURL = `${baseURL}?qr=${encodeURIComponent(qrContent)}`;
         
         const qrDiv = document.createElement('div');
-        qrDiv.className = 'qr-item';
         qrDiv.style.textAlign = 'center';
-        qrDiv.style.padding = '15px';
+        qrDiv.style.padding = '10px';
         qrDiv.style.background = 'white';
         qrDiv.style.borderRadius = '10px';
         qrDiv.style.border = '1px solid #ddd';
-        qrDiv.style.width = '200px';
+        qrDiv.style.width = '180px';
+        qrDiv.style.display = 'inline-block';
+        qrDiv.style.margin = '5px';
         
         const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = 160;
+        canvas.width = 150;
+        canvas.height = 150;
         qrDiv.appendChild(canvas);
         
         try {
-            await QRCode.toCanvas(canvas, mailtoURL, {
-                width: 160,
-                margin: 1
-            });
-            
-            qrDiv.innerHTML += `
-                <p><strong>${title}</strong></p>
-                <p><strong>${printer.id}</strong></p>
-                <p style="font-size:10px; color:#27ae60;">📧 Escanea → Abre correo</p>
-                <button onclick="downloadSingleQR('${printer.id}_${type}')" style="margin-top:10px; padding:5px 10px; background:#27ae60; color:white; border:none; border-radius:3px; cursor:pointer; font-size:11px;">
-                    💾 Descargar
-                </button>
-            `;
-            
+            await QRCode.toCanvas(canvas, fullURL, { width: 150, margin: 1 });
+            qrDiv.innerHTML += `<p><strong>${title}</strong><br>${printer.id}</p>`;
+            qrDiv.innerHTML += `<button onclick="downloadSingleQR('${printer.id}_${type}')" style="margin-top:5px; padding:5px 10px; background:#27ae60; color:white; border:none; border-radius:3px; cursor:pointer;">💾</button>`;
             qrCache[`${printer.id}_${type}`] = canvas;
             container.appendChild(qrDiv);
         } catch (error) {
-            console.error(`Error con ${printer.id}:`, error);
             qrDiv.innerHTML = `<p style="color:red;">Error</p>`;
             container.appendChild(qrDiv);
         }
-        
         resolve();
     });
+}
+
+// Descargar ZIP
+async function downloadAllQRsAsZip() {
+    const zip = new JSZip();
+    const folder = zip.folder("codigos_qr");
+    
+    for (const [filename, canvas] of Object.entries(qrCache)) {
+        const dataURL = canvas.toDataURL('image/png');
+        const base64Data = dataURL.split(',')[1];
+        folder.file(`${filename}.png`, base64Data, { base64: true });
+    }
+    
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "codigos_qr.zip");
+    alert('✅ ZIP descargado');
 }
