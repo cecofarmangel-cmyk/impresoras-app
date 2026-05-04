@@ -70,20 +70,33 @@ function onScanSuccess(decodedText) {
     lastScanned = cleanText;
     scanCooldown = true;
     
-    // Parsear el contenido del QR (formato: TIPO|ID)
-    const parts = cleanText.split('|');
+    let data;
     
-    if (parts.length !== 2) {
-        updateStatus('❌ QR inválido. Formato incorrecto.', 'error');
-        resetCooldown();
-        return;
+    // Intentar parsear como JSON primero (nuevo formato)
+    try {
+        data = JSON.parse(cleanText);
+    } catch (e) {
+        // Si falla, intentar formato antiguo (TIPO|ID)
+        const parts = cleanText.split('|');
+        if (parts.length === 2) {
+            const [tipo, printerId] = parts;
+            const printer = printersDB[printerId];
+            if (printer) {
+                data = {
+                    t: tipo.toLowerCase(),
+                    m: printer.model,
+                    s: printer.serial,
+                    l: printer.location,
+                    tt: printer.tonerType,
+                    ae: printer.averiaEmail,
+                    te: printer.tonerEmail
+                };
+            }
+        }
     }
     
-    const [tipo, printerId] = parts;
-    const printer = printersDB[printerId];
-    
-    if (!printer) {
-        updateStatus(`❌ Impresora ${printerId} no encontrada en la base de datos`, 'error');
+    if (!data || !data.t || !data.m || !data.s) {
+        updateStatus('❌ QR inválido o incompleto. Regenera los QR desde el panel.', 'error');
         resetCooldown();
         return;
     }
@@ -94,12 +107,12 @@ function onScanSuccess(decodedText) {
     }
     
     // Según el tipo, enviar correo correspondiente
-    if (tipo === 'AVERIA') {
-        sendAveriaEmail(printer);
-    } else if (tipo === 'TONER') {
-        sendTonerEmail(printer);
+    if (data.t === 'averia') {
+        sendAveriaEmail(data);
+    } else if (data.t === 'toner') {
+        sendTonerEmail(data);
     } else {
-        updateStatus(`❌ Tipo de QR desconocido: ${tipo}`, 'error');
+        updateStatus(`❌ Tipo de QR desconocido: ${data.t}`, 'error');
         if (html5QrCode) html5QrCode.resume();
         resetCooldown();
     }
@@ -115,18 +128,18 @@ function resetCooldown() {
 }
 
 // Enviar correo de avería
-function sendAveriaEmail(printer) {
-    const destinatario = printer.averiaEmail;
-    const asunto = `AVERÍA - ${printer.model} - Serie: ${printer.serial}`;
+function sendAveriaEmail(data) {
+    const destinatario = data.ae || 'soporte@tuempresa.com';
+    const asunto = `AVERÍA - ${data.m} - Serie: ${data.s}`;
     
     const cuerpo = `
 =========================================
 📠 REPORTE DE AVERÍA EN IMPRESORA
 =========================================
 
-🖨️ MODELO: ${printer.model}
-🔢 NÚMERO DE SERIE: ${printer.serial}
-📍 UBICACIÓN: ${printer.location}
+🖨️ MODELO: ${data.m}
+🔢 NÚMERO DE SERIE: ${data.s}
+📍 UBICACIÓN: ${data.l || 'No especificada'}
 
 ─────────────────────────────────────────
 ⚠️ DESCRIPCIÓN DEL PROBLEMA:
@@ -142,13 +155,11 @@ function sendAveriaEmail(printer) {
     
     const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
     
-    updateStatus(`🔴 Abriendo correo para AVERÍA de ${printer.model}...`, 'success');
+    updateStatus(`🔴 Abriendo correo para AVERÍA de ${data.m}...`, 'success');
     
     setTimeout(() => {
-        // Usar window.open para mejor compatibilidad en móviles
         const win = window.open(mailtoURL, '_blank');
         if (!win || win.closed || typeof win.closed === 'undefined') {
-            // Fallback si el popup fue bloqueado
             window.location.href = mailtoURL;
         }
         resetCooldown();
@@ -156,19 +167,19 @@ function sendAveriaEmail(printer) {
 }
 
 // Enviar correo de tóner
-function sendTonerEmail(printer) {
-    const destinatario = printer.tonerEmail;
-    const asunto = `PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`;
+function sendTonerEmail(data) {
+    const destinatario = data.te || 'compras@tuempresa.com';
+    const asunto = `PEDIDO TÓNER - ${data.m} - Serie: ${data.s}`;
     
     const cuerpo = `
 =========================================
 🖨️ SOLICITUD DE TÓNER
 =========================================
 
-🖨️ MODELO: ${printer.model}
-🔢 NÚMERO DE SERIE: ${printer.serial}
-📍 UBICACIÓN: ${printer.location}
-📦 TÓNER COMPATIBLE: ${printer.tonerType}
+🖨️ MODELO: ${data.m}
+🔢 NÚMERO DE SERIE: ${data.s}
+📍 UBICACIÓN: ${data.l || 'No especificada'}
+📦 TÓNER COMPATIBLE: ${data.tt || 'No especificado'}
 
 ─────────────────────────────────────────
 📊 CANTIDAD SOLICITADA:
@@ -186,7 +197,7 @@ function sendTonerEmail(printer) {
     
     const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
     
-    updateStatus(`🟢 Abriendo correo para TÓNER de ${printer.model}...`, 'success');
+    updateStatus(`🟢 Abriendo correo para TÓNER de ${data.m}...`, 'success');
     
     setTimeout(() => {
         const win = window.open(mailtoURL, '_blank');
