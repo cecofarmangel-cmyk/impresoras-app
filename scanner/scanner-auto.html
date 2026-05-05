@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Reporte Rápido - Impresora</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f5;
@@ -21,7 +16,6 @@
             justify-content: center;
             padding: 20px;
         }
-
         .container {
             background: white;
             border-radius: 20px;
@@ -30,64 +24,39 @@
             width: 100%;
             overflow: hidden;
         }
-
         .header {
             padding: 30px;
             text-align: center;
             color: white;
         }
-
         .header.averia {
             background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         }
-
         .header.toner {
             background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
         }
-
-        .header h1 {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 0.9rem;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
+        .header h1 { font-size: 1.5rem; margin-bottom: 5px; }
+        .header p { opacity: 0.9; font-size: 0.9rem; }
+        .content { padding: 30px; }
         .printer-info {
             background: #f8f9fa;
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
         }
-
         .printer-info h3 {
             color: #333;
             margin-bottom: 15px;
             font-size: 1.1rem;
         }
-
         .info-row {
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #e0e0e0;
         }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #666; font-size: 0.9rem; }
         .info-value {
             color: #333;
             font-weight: 600;
@@ -95,12 +64,9 @@
             text-align: right;
             flex: 1;
             margin-left: 10px;
+            word-break: break-word;
         }
-
-        .action-section {
-            text-align: center;
-        }
-
+        .action-section { text-align: center; }
         .btn-mailto {
             display: inline-flex;
             align-items: center;
@@ -117,24 +83,16 @@
             text-decoration: none;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-
         .btn-mailto.averia {
             background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         }
-
         .btn-mailto.toner {
             background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
         }
-
         .btn-mailto:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.2);
         }
-
-        .btn-mailto:active {
-            transform: translateY(0);
-        }
-
         .manual-note {
             margin-top: 20px;
             padding: 15px;
@@ -145,21 +103,13 @@
             color: #856404;
             display: none;
         }
-
-        .manual-note.visible {
-            display: block;
-        }
-
+        .manual-note.visible { display: block; }
         .error-message {
             text-align: center;
             padding: 40px 20px;
             color: #e74c3c;
         }
-
-        .error-message h2 {
-            margin-bottom: 10px;
-        }
-
+        .error-message h2 { margin-bottom: 10px; }
         .spinner {
             width: 50px;
             height: 50px;
@@ -169,20 +119,12 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
+        @keyframes spin { to { transform: rotate(360deg); } }
         .loading {
             text-align: center;
             padding: 40px 20px;
         }
-
-        .loading p {
-            color: #666;
-            margin-top: 15px;
-        }
+        .loading p { color: #666; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -194,61 +136,52 @@
     </div>
 
     <script>
-        // Base de datos de impresoras (carga desde JSON o localStorage)
-        let printersDB = {};
-
-        // Cargar impresoras al iniciar
-        async function init() {
-            await loadPrinters();
-            processQR();
-        }
-
-        // Cargar impresoras desde localStorage o usar datos de ejemplo
-        async function loadPrinters() {
-            const stored = localStorage.getItem('impresoras');
-            
-            if (stored) {
-                const printers = JSON.parse(stored);
-                printers.forEach(p => printersDB[p.id] = p);
-            } else {
-                // Datos de ejemplo si no hay nada en localStorage
-                const ejemplo = [
-                    { id: "IM001", serial: "SN123456789", model: "HP LaserJet Pro M402dn", location: "Oficina Principal", tonerType: "HP 26X", averiaEmail: "soporte@tuempresa.com", tonerEmail: "compras@tuempresa.com" }
-                ];
-                ejemplo.forEach(p => printersDB[p.id] = p);
-            }
-        }
-
-        // Procesar el parámetro QR de la URL
+        // Procesar parámetros de la URL
         function processQR() {
             const params = new URLSearchParams(window.location.search);
-            const qrData = params.get('qr');
             
-            if (!qrData) {
-                showError('No se encontró información del QR en la URL');
+            // Obtener datos directamente de los parámetros
+            const tipo = params.get('t');
+            const printerId = params.get('id');
+            const model = params.get('m');
+            const serial = params.get('s');
+            const location = params.get('l');
+            const tonerType = params.get('tt');
+            const averiaEmail = params.get('ae');
+            const tonerEmail = params.get('te');
+            
+            // Validar datos mínimos
+            if (!tipo || !model || !serial) {
+                // Intentar formato antiguo como fallback
+                const qrData = params.get('qr');
+                if (qrData) {
+                    const parts = qrData.split('|');
+                    if (parts.length === 2) {
+                        // Formato antiguo - necesita base de datos
+                        showError('Este QR usa el formato antiguo. Por favor, regenera los QR desde el panel de administración con la nueva versión.');
+                        return;
+                    }
+                }
+                showError('Datos incompletos en el QR. Asegúrate de escanear un QR generado con la última versión.');
                 return;
             }
-
-            const parts = qrData.split('|');
-            if (parts.length !== 2) {
-                showError('Formato de QR inválido');
-                return;
-            }
-
-            const [tipo, printerId] = parts;
-            const printer = printersDB[printerId];
-
-            if (!printer) {
-                showError(`Impresora ${printerId} no encontrada. ¿Registraste esta impresora en el panel?`);
-                return;
-            }
-
+            
+            const printer = {
+                id: printerId || 'N/A',
+                model: decodeURIComponent(model),
+                serial: decodeURIComponent(serial),
+                location: location ? decodeURIComponent(location) : 'No especificada',
+                tonerType: tonerType ? decodeURIComponent(tonerType) : 'No especificado',
+                averiaEmail: averiaEmail ? decodeURIComponent(averiaEmail) : 'soporte@tuempresa.com',
+                tonerEmail: tonerEmail ? decodeURIComponent(tonerEmail) : 'compras@tuempresa.com'
+            };
+            
             renderPage(tipo, printer);
         }
 
         // Mostrar página con botón de acción
         function renderPage(tipo, printer) {
-            const isAveria = tipo === 'AVERIA';
+            const isAveria = tipo === 'averia';
             const destinatario = isAveria ? printer.averiaEmail : printer.tonerEmail;
             const asunto = isAveria 
                 ? `AVERÍA - ${printer.model} - Serie: ${printer.serial}`
@@ -258,7 +191,6 @@
                 ? generarCuerpoAveria(printer)
                 : generarCuerpoToner(printer);
 
-            // Crear el mailto URL con encodeURIComponent
             const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
 
             const app = document.getElementById('app');
@@ -299,14 +231,14 @@
                         </div>
 
                         <div class="action-section">
-                            <a href="${mailtoURL}" class="btn-mailto ${isAveria ? 'averia' : 'toner'}" onclick="handleMailtoClick(event)">
+                            <a href="${mailtoURL}" class="btn-mailto ${isAveria ? 'averia' : 'toner'}" onclick="handleMailtoClick()">
                                 ${isAveria ? '🔧' : '📦'} Abrir ${isAveria ? 'Reporte de Avería' : 'Solicitud de Tóner'}
                             </a>
                             
                             <div id="manual-note" class="manual-note">
                                 <strong>⚠️ Si no se abrió el correo:</strong><br>
                                 Tu navegador puede estar bloqueando la apertura automática. 
-                                <a id="manual-link" href="${mailtoURL}" style="color: #856404; text-decoration: underline; font-weight: bold;">
+                                <a href="${mailtoURL}" style="color: #856404; text-decoration: underline; font-weight: bold;">
                                     Haz clic aquí para abrir manualmente
                                 </a>
                             </div>
@@ -316,20 +248,13 @@
             `;
         }
 
-        // Manejar clic en el botón mailto
-        function handleMailtoClick(event) {
-            // El enlace <a> con href="mailto:" es el método más confiable
-            // porque requiere interacción directa del usuario
-            
+        function handleMailtoClick() {
             setTimeout(() => {
                 const note = document.getElementById('manual-note');
-                if (note) {
-                    note.classList.add('visible');
-                }
+                if (note) note.classList.add('visible');
             }, 2000);
         }
 
-        // Generar cuerpo del correo de avería
         function generarCuerpoAveria(printer) {
             return `=========================================
 📠 REPORTE DE AVERÍA EN IMPRESORA
@@ -352,7 +277,6 @@
 =========================================`;
         }
 
-        // Generar cuerpo del correo de tóner
         function generarCuerpoToner(printer) {
             return `=========================================
 🖨️ SOLICITUD DE TÓNER
@@ -378,7 +302,6 @@
 =========================================`;
         }
 
-        // Mostrar error
         function showError(message) {
             const app = document.getElementById('app');
             app.innerHTML = `
@@ -392,7 +315,7 @@
         }
 
         // Iniciar
-        init();
+        processQR();
     </script>
 </body>
 </html>
