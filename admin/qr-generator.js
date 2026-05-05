@@ -10,9 +10,13 @@ function generateQR(type) {
     const printer = printers.find(p => p.id === printerId);
     if (!printer) return;
     
-    // Crear el contenido del QR con TODOS los datos necesarios
-    const qrData = JSON.stringify({
+    // URL base de tu app (ajústala a tu dominio real)
+    const baseUrl = 'https://cecofarmangel-cmyk.github.io/impresoras-app/scanner/scanner-auto.html';
+    
+    // Crear URL con todos los datos como parámetros
+    const params = new URLSearchParams({
         t: type,
+        id: printer.id,
         m: printer.model,
         s: printer.serial,
         l: printer.location,
@@ -20,6 +24,8 @@ function generateQR(type) {
         ae: printer.averiaEmail,
         te: printer.tonerEmail
     });
+    
+    const qrUrl = `${baseUrl}?${params.toString()}`;
     
     // Limpiar contenedor anterior
     const container = document.getElementById('qr-result');
@@ -49,6 +55,7 @@ function generateQR(type) {
         <p style="margin: 8px 0; font-size: 1.1rem;"><strong>${title}</strong></p>
         <p style="margin: 5px 0; color: #666; font-weight: bold;">${printer.id}</p>
         <p style="margin: 5px 0; color: #666; font-size: 0.9rem;">${printer.model}</p>
+        <p style="margin: 5px 0; color: #999; font-size: 0.75rem; word-break: break-all; max-width: 250px;">${qrUrl}</p>
     `;
     qrItem.appendChild(infoDiv);
     
@@ -68,9 +75,9 @@ function generateQR(type) {
     
     container.appendChild(qrItem);
     
-    // Generar QR
+    // Generar QR con la URL
     const qr = new QRCode(qrCodeDiv, {
-        text: qrData,
+        text: qrUrl,
         width: 250,
         height: 250,
         colorDark: '#000000',
@@ -82,7 +89,6 @@ function generateQR(type) {
     setTimeout(() => {
         const img = qrCodeDiv.querySelector('img');
         if (img) {
-            // Asegurar que la imagen esté cargada
             if (img.complete) {
                 enableDownload(img, downloadBtn, `${printer.id}_${type}`);
             } else {
@@ -105,7 +111,6 @@ function enableDownload(imgElement, button, filename) {
     button.disabled = false;
     button.style.background = '#3498db';
     button.style.cursor = 'pointer';
-    button.style.pointerEvents = 'auto';
     
     button.onclick = function() {
         downloadQRImage(imgElement, filename);
@@ -114,42 +119,32 @@ function enableDownload(imgElement, button, filename) {
 
 // Descargar imagen QR directamente
 function downloadQRImage(imgElement, filename) {
-    // Crear canvas del tamaño exacto de la imagen
     const canvas = document.createElement('canvas');
     canvas.width = 250;
     canvas.height = 250;
     const ctx = canvas.getContext('2d');
     
-    // Fondo blanco
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, 250, 250);
-    
-    // Dibujar la imagen del QR
     ctx.drawImage(imgElement, 0, 0, 250, 250);
     
-    // Descargar
     const link = document.createElement('a');
     link.download = `${filename}.png`;
     link.href = canvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
-    
-    // Pequeña demora antes de eliminar el link
     setTimeout(() => {
-        document.body.removeChild(link);
+        if (link.parentNode) document.body.removeChild(link);
     }, 100);
 }
 
-// Descargar QR (versión antigua para compatibilidad con HTML inline)
+// Descargar QR (compatibilidad)
 function downloadQR(button, filename) {
     const qrItem = button.closest('.qr-item');
     if (!qrItem) {
-        // Fallback: buscar en parentElement
         const item = button.parentElement;
         const img = item.querySelector('img');
-        if (img) {
-            downloadQRImage(img, filename);
-        }
+        if (img) downloadQRImage(img, filename);
         return;
     }
     
@@ -161,7 +156,7 @@ function downloadQR(button, filename) {
     }
 }
 
-// Generar todos los QR de todas las impresoras
+// Generar todos los QR
 function generateAllQRs() {
     if (printers.length === 0) {
         alert('No hay impresoras registradas');
@@ -177,15 +172,13 @@ function generateAllQRs() {
     container.appendChild(qrList);
     
     let delay = 0;
-    printers.forEach((printer, index) => {
-        // QR para Avería
+    printers.forEach((printer) => {
         setTimeout(() => {
             const averiaItem = createQRItem(printer, 'averia', '🔴 AVERÍA');
             qrList.appendChild(averiaItem);
         }, delay);
         delay += 200;
         
-        // QR para Tóner
         setTimeout(() => {
             const tonerItem = createQRItem(printer, 'toner', '🟢 TÓNER');
             qrList.appendChild(tonerItem);
@@ -193,7 +186,6 @@ function generateAllQRs() {
         delay += 200;
     });
     
-    // Botón para descargar todos
     setTimeout(() => {
         const batchDiv = document.createElement('div');
         batchDiv.style.textAlign = 'center';
@@ -215,8 +207,11 @@ function createQRItem(printer, type, title) {
     qrItem.style.background = '#f9f9f9';
     qrItem.style.borderRadius = '10px';
     
-    const qrData = JSON.stringify({
+    const baseUrl = 'https://cecofarmangel-cmyk.github.io/impresoras-app/scanner/scanner-auto.html';
+    
+    const params = new URLSearchParams({
         t: type,
+        id: printer.id,
         m: printer.model,
         s: printer.serial,
         l: printer.location,
@@ -224,6 +219,8 @@ function createQRItem(printer, type, title) {
         ae: printer.averiaEmail,
         te: printer.tonerEmail
     });
+    
+    const qrUrl = `${baseUrl}?${params.toString()}`;
     
     // Div para el QR
     const qrCodeDiv = document.createElement('div');
@@ -254,9 +251,9 @@ function createQRItem(printer, type, title) {
     downloadBtn.style.fontSize = '0.85rem';
     qrItem.appendChild(downloadBtn);
     
-    // Generar QR
+    // Generar QR con URL
     const qr = new QRCode(qrCodeDiv, {
-        text: qrData,
+        text: qrUrl,
         width: 200,
         height: 200,
         colorDark: '#000000',
@@ -290,31 +287,45 @@ async function downloadAllQRs() {
     
     alert('Generando descargas... Acepta cada descarga en tu navegador.');
     
+    const baseUrl = 'https://cecofarmangel-cmyk.github.io/impresoras-app/scanner/scanner-auto.html';
+    
     for (const printer of printers) {
         // Avería
         await new Promise(resolve => setTimeout(resolve, 800));
-        const averiaCanvas = await generateQRCanvas(JSON.stringify({
-            t: 'averia', m: printer.model, s: printer.serial,
-            l: printer.location, tt: printer.tonerType,
-            ae: printer.averiaEmail, te: printer.tonerEmail
-        }), 200);
+        const averiaParams = new URLSearchParams({
+            t: 'averia',
+            id: printer.id,
+            m: printer.model,
+            s: printer.serial,
+            l: printer.location,
+            tt: printer.tonerType,
+            ae: printer.averiaEmail,
+            te: printer.tonerEmail
+        });
+        const averiaCanvas = await generateQRCanvas(`${baseUrl}?${averiaParams.toString()}`, 200);
         if (averiaCanvas) downloadCanvas(averiaCanvas, `${printer.id}_AVERIA.png`);
         
         // Tóner
         await new Promise(resolve => setTimeout(resolve, 800));
-        const tonerCanvas = await generateQRCanvas(JSON.stringify({
-            t: 'toner', m: printer.model, s: printer.serial,
-            l: printer.location, tt: printer.tonerType,
-            ae: printer.averiaEmail, te: printer.tonerEmail
-        }), 200);
+        const tonerParams = new URLSearchParams({
+            t: 'toner',
+            id: printer.id,
+            m: printer.model,
+            s: printer.serial,
+            l: printer.location,
+            tt: printer.tonerType,
+            ae: printer.averiaEmail,
+            te: printer.tonerEmail
+        });
+        const tonerCanvas = await generateQRCanvas(`${baseUrl}?${tonerParams.toString()}`, 200);
         if (tonerCanvas) downloadCanvas(tonerCanvas, `${printer.id}_TONER.png`);
     }
     
     alert('✅ Descargas completadas');
 }
 
-// Generar QR y devolver canvas (versión confiable)
-function generateQRCanvas(content, size) {
+// Generar QR y devolver canvas
+function generateQRCanvas(url, size) {
     return new Promise((resolve) => {
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
@@ -323,7 +334,7 @@ function generateQRCanvas(content, size) {
         document.body.appendChild(tempDiv);
         
         const qr = new QRCode(tempDiv, {
-            text: content,
+            text: url,
             width: size,
             height: size,
             colorDark: '#000000',
@@ -331,7 +342,6 @@ function generateQRCanvas(content, size) {
             correctLevel: QRCode.CorrectLevel.M
         });
         
-        // Dar tiempo suficiente para renderizar
         setTimeout(() => {
             const img = tempDiv.querySelector('img');
             
@@ -346,7 +356,6 @@ function generateQRCanvas(content, size) {
             canvas.height = size;
             const ctx = canvas.getContext('2d');
             
-            // Fondo blanco
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, size, size);
             
