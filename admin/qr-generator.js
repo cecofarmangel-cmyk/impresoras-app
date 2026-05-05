@@ -31,42 +31,45 @@ function generateQR(type) {
     qrItem.style.display = 'inline-block';
     qrItem.style.margin = '20px';
     qrItem.style.textAlign = 'center';
+    qrItem.style.padding = '20px';
+    qrItem.style.background = '#f9f9f9';
+    qrItem.style.borderRadius = '10px';
     
     // Crear un div interno donde se generará el QR
     const qrCodeDiv = document.createElement('div');
-    qrCodeDiv.style.marginBottom = '10px';
+    qrCodeDiv.id = 'qrcode-' + Date.now();
+    qrCodeDiv.style.marginBottom = '15px';
+    qrCodeDiv.style.display = 'inline-block';
     qrItem.appendChild(qrCodeDiv);
     
     // Agregar información
     const title = type === 'averia' ? '🔴 AVERÍA' : '🟢 TÓNER';
     const infoDiv = document.createElement('div');
     infoDiv.innerHTML = `
-        <p style="margin: 5px 0;"><strong>${title}</strong></p>
-        <p style="margin: 5px 0; color: #666;">${printer.id}</p>
+        <p style="margin: 8px 0; font-size: 1.1rem;"><strong>${title}</strong></p>
+        <p style="margin: 5px 0; color: #666; font-weight: bold;">${printer.id}</p>
         <p style="margin: 5px 0; color: #666; font-size: 0.9rem;">${printer.model}</p>
     `;
     qrItem.appendChild(infoDiv);
     
-    // Botón de descarga
+    // Botón de descarga (inicialmente deshabilitado)
     const downloadBtn = document.createElement('button');
-    downloadBtn.textContent = '💾 Descargar QR';
-    downloadBtn.style.marginTop = '10px';
-    downloadBtn.style.padding = '10px 20px';
-    downloadBtn.style.background = '#3498db';
+    downloadBtn.textContent = '⏳ Generando...';
+    downloadBtn.disabled = true;
+    downloadBtn.style.marginTop = '15px';
+    downloadBtn.style.padding = '12px 24px';
+    downloadBtn.style.background = '#95a5a6';
     downloadBtn.style.color = 'white';
     downloadBtn.style.border = 'none';
     downloadBtn.style.borderRadius = '8px';
-    downloadBtn.style.cursor = 'pointer';
+    downloadBtn.style.cursor = 'not-allowed';
     downloadBtn.style.fontWeight = 'bold';
-    downloadBtn.onclick = function() {
-        downloadQRFromItem(qrItem, `${printer.id}_${type}`);
-    };
     qrItem.appendChild(downloadBtn);
     
     container.appendChild(qrItem);
     
-    // Generar QR - La librería QRCode.js modificará qrCodeDiv
-    new QRCode(qrCodeDiv, {
+    // Generar QR
+    const qr = new QRCode(qrCodeDiv, {
         text: qrData,
         width: 250,
         height: 250,
@@ -74,44 +77,88 @@ function generateQR(type) {
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
     });
-}
-
-// Descargar QR desde el item (busca canvas o img)
-function downloadQRFromItem(qrItem, filename) {
-    // Buscar canvas primero
-    let canvas = qrItem.querySelector('canvas');
     
-    // Si no hay canvas, buscar imagen
-    if (!canvas) {
-        const img = qrItem.querySelector('img');
+    // Esperar a que el QR se renderice completamente
+    setTimeout(() => {
+        const img = qrCodeDiv.querySelector('img');
         if (img) {
-            // Crear canvas temporal para la imagen
-            canvas = document.createElement('canvas');
-            canvas.width = 250;
-            canvas.height = 250;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 250, 250);
-            ctx.drawImage(img, 0, 0, 250, 250);
+            // Asegurar que la imagen esté cargada
+            if (img.complete) {
+                enableDownload(img, downloadBtn, `${printer.id}_${type}`);
+            } else {
+                img.onload = function() {
+                    enableDownload(img, downloadBtn, `${printer.id}_${type}`);
+                };
+                img.onerror = function() {
+                    downloadBtn.textContent = '❌ Error';
+                };
+            }
+        } else {
+            downloadBtn.textContent = '❌ Error';
         }
-    }
-    
-    if (canvas) {
-        const link = document.createElement('a');
-        link.download = `${filename}.png`;
-        link.href = canvas.toDataURL('image/png');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } else {
-        alert('❌ No se encontró el QR para descargar. Intenta generarlo de nuevo.');
-    }
+    }, 500);
 }
 
-// Descargar QR como imagen (versión antigua para compatibilidad)
+// Habilitar botón de descarga
+function enableDownload(imgElement, button, filename) {
+    button.textContent = '💾 Descargar QR';
+    button.disabled = false;
+    button.style.background = '#3498db';
+    button.style.cursor = 'pointer';
+    button.style.pointerEvents = 'auto';
+    
+    button.onclick = function() {
+        downloadQRImage(imgElement, filename);
+    };
+}
+
+// Descargar imagen QR directamente
+function downloadQRImage(imgElement, filename) {
+    // Crear canvas del tamaño exacto de la imagen
+    const canvas = document.createElement('canvas');
+    canvas.width = 250;
+    canvas.height = 250;
+    const ctx = canvas.getContext('2d');
+    
+    // Fondo blanco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 250, 250);
+    
+    // Dibujar la imagen del QR
+    ctx.drawImage(imgElement, 0, 0, 250, 250);
+    
+    // Descargar
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    
+    // Pequeña demora antes de eliminar el link
+    setTimeout(() => {
+        document.body.removeChild(link);
+    }, 100);
+}
+
+// Descargar QR (versión antigua para compatibilidad con HTML inline)
 function downloadQR(button, filename) {
-    const qrItem = button.parentElement;
-    downloadQRFromItem(qrItem, filename);
+    const qrItem = button.closest('.qr-item');
+    if (!qrItem) {
+        // Fallback: buscar en parentElement
+        const item = button.parentElement;
+        const img = item.querySelector('img');
+        if (img) {
+            downloadQRImage(img, filename);
+        }
+        return;
+    }
+    
+    const img = qrItem.querySelector('img');
+    if (img) {
+        downloadQRImage(img, filename);
+    } else {
+        alert('❌ No se encontró la imagen del QR');
+    }
 }
 
 // Generar todos los QR de todas las impresoras
@@ -129,22 +176,31 @@ function generateAllQRs() {
     qrList.style.textAlign = 'center';
     container.appendChild(qrList);
     
-    printers.forEach(printer => {
+    let delay = 0;
+    printers.forEach((printer, index) => {
         // QR para Avería
-        const averiaItem = createQRItem(printer, 'averia', '🔴 AVERÍA');
-        qrList.appendChild(averiaItem);
+        setTimeout(() => {
+            const averiaItem = createQRItem(printer, 'averia', '🔴 AVERÍA');
+            qrList.appendChild(averiaItem);
+        }, delay);
+        delay += 200;
         
         // QR para Tóner
-        const tonerItem = createQRItem(printer, 'toner', '🟢 TÓNER');
-        qrList.appendChild(tonerItem);
+        setTimeout(() => {
+            const tonerItem = createQRItem(printer, 'toner', '🟢 TÓNER');
+            qrList.appendChild(tonerItem);
+        }, delay);
+        delay += 200;
     });
     
     // Botón para descargar todos
-    const batchDiv = document.createElement('div');
-    batchDiv.style.textAlign = 'center';
-    batchDiv.style.marginTop = '30px';
-    batchDiv.innerHTML = `<button onclick="downloadAllQRs()" class="btn-batch" style="padding: 12px 20px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">📦 Descargar todos como ZIP</button>`;
-    container.appendChild(batchDiv);
+    setTimeout(() => {
+        const batchDiv = document.createElement('div');
+        batchDiv.style.textAlign = 'center';
+        batchDiv.style.marginTop = '30px';
+        batchDiv.innerHTML = `<button onclick="downloadAllQRs()" class="btn-batch" style="padding: 12px 20px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">📦 Descargar todos</button>`;
+        container.appendChild(batchDiv);
+    }, delay + 100);
 }
 
 // Crear item con QR
@@ -155,6 +211,9 @@ function createQRItem(printer, type, title) {
     qrItem.style.margin = '15px';
     qrItem.style.textAlign = 'center';
     qrItem.style.verticalAlign = 'top';
+    qrItem.style.padding = '15px';
+    qrItem.style.background = '#f9f9f9';
+    qrItem.style.borderRadius = '10px';
     
     const qrData = JSON.stringify({
         t: type,
@@ -169,35 +228,34 @@ function createQRItem(printer, type, title) {
     // Div para el QR
     const qrCodeDiv = document.createElement('div');
     qrCodeDiv.style.marginBottom = '10px';
+    qrCodeDiv.style.display = 'inline-block';
     qrItem.appendChild(qrCodeDiv);
     
     // Info
     const infoDiv = document.createElement('div');
     infoDiv.innerHTML = `
-        <p style="margin: 5px 0;"><strong>${title}</strong></p>
-        <p style="margin: 5px 0; color: #666; font-size: 0.85rem;">${printer.id}</p>
+        <p style="margin: 5px 0; font-size: 1rem;"><strong>${title}</strong></p>
+        <p style="margin: 5px 0; color: #666; font-size: 0.85rem; font-weight: bold;">${printer.id}</p>
         <p style="margin: 5px 0; color: #666; font-size: 0.8rem;">${printer.model}</p>
     `;
     qrItem.appendChild(infoDiv);
     
-    // Botón descarga
+    // Botón descarga (inicialmente deshabilitado)
     const downloadBtn = document.createElement('button');
-    downloadBtn.textContent = '💾 Descargar';
-    downloadBtn.style.marginTop = '8px';
+    downloadBtn.textContent = '⏳...';
+    downloadBtn.disabled = true;
+    downloadBtn.style.marginTop = '10px';
     downloadBtn.style.padding = '8px 16px';
-    downloadBtn.style.background = '#3498db';
+    downloadBtn.style.background = '#95a5a6';
     downloadBtn.style.color = 'white';
     downloadBtn.style.border = 'none';
     downloadBtn.style.borderRadius = '6px';
-    downloadBtn.style.cursor = 'pointer';
+    downloadBtn.style.cursor = 'not-allowed';
     downloadBtn.style.fontSize = '0.85rem';
-    downloadBtn.onclick = function() {
-        downloadQRFromItem(qrItem, `${printer.id}_${type}`);
-    };
     qrItem.appendChild(downloadBtn);
     
     // Generar QR
-    new QRCode(qrCodeDiv, {
+    const qr = new QRCode(qrCodeDiv, {
         text: qrData,
         width: 200,
         height: 200,
@@ -205,6 +263,20 @@ function createQRItem(printer, type, title) {
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
     });
+    
+    // Esperar renderizado
+    setTimeout(() => {
+        const img = qrCodeDiv.querySelector('img');
+        if (img) {
+            if (img.complete) {
+                enableDownload(img, downloadBtn, `${printer.id}_${type}`);
+            } else {
+                img.onload = function() {
+                    enableDownload(img, downloadBtn, `${printer.id}_${type}`);
+                };
+            }
+        }
+    }, 400);
     
     return qrItem;
 }
@@ -216,58 +288,41 @@ async function downloadAllQRs() {
         return;
     }
     
-    alert('Generando descargas. Acepta cada descarga en tu navegador.');
+    alert('Generando descargas... Acepta cada descarga en tu navegador.');
     
     for (const printer of printers) {
-        await new Promise(resolve => setTimeout(resolve, 600));
-        
         // Avería
-        const averiaData = JSON.stringify({
-            t: 'averia',
-            m: printer.model,
-            s: printer.serial,
-            l: printer.location,
-            tt: printer.tonerType,
-            ae: printer.averiaEmail,
-            te: printer.tonerEmail
-        });
-        
-        const averiaCanvas = await generateQRCanvas(averiaData, 200);
-        if (averiaCanvas) {
-            downloadCanvas(averiaCanvas, `${printer.id}_AVERIA.png`);
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const averiaCanvas = await generateQRCanvas(JSON.stringify({
+            t: 'averia', m: printer.model, s: printer.serial,
+            l: printer.location, tt: printer.tonerType,
+            ae: printer.averiaEmail, te: printer.tonerEmail
+        }), 200);
+        if (averiaCanvas) downloadCanvas(averiaCanvas, `${printer.id}_AVERIA.png`);
         
         // Tóner
-        const tonerData = JSON.stringify({
-            t: 'toner',
-            m: printer.model,
-            s: printer.serial,
-            l: printer.location,
-            tt: printer.tonerType,
-            ae: printer.averiaEmail,
-            te: printer.tonerEmail
-        });
-        
-        const tonerCanvas = await generateQRCanvas(tonerData, 200);
-        if (tonerCanvas) {
-            downloadCanvas(tonerCanvas, `${printer.id}_TONER.png`);
-        }
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const tonerCanvas = await generateQRCanvas(JSON.stringify({
+            t: 'toner', m: printer.model, s: printer.serial,
+            l: printer.location, tt: printer.tonerType,
+            ae: printer.averiaEmail, te: printer.tonerEmail
+        }), 200);
+        if (tonerCanvas) downloadCanvas(tonerCanvas, `${printer.id}_TONER.png`);
     }
     
-    alert('✅ Todas las descargas han sido iniciadas');
+    alert('✅ Descargas completadas');
 }
 
-// Generar QR y devolver canvas
+// Generar QR y devolver canvas (versión confiable)
 function generateQRCanvas(content, size) {
     return new Promise((resolve) => {
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
         tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
         document.body.appendChild(tempDiv);
         
-        new QRCode(tempDiv, {
+        const qr = new QRCode(tempDiv, {
             text: content,
             width: size,
             height: size,
@@ -276,39 +331,41 @@ function generateQRCanvas(content, size) {
             correctLevel: QRCode.CorrectLevel.M
         });
         
-        // Dar tiempo a la librería para renderizar
+        // Dar tiempo suficiente para renderizar
         setTimeout(() => {
-            const canvas = tempDiv.querySelector('canvas');
             const img = tempDiv.querySelector('img');
             
-            if (canvas) {
+            if (!img) {
+                document.body.removeChild(tempDiv);
+                resolve(null);
+                return;
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Fondo blanco
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+            
+            if (img.complete && img.naturalWidth > 0) {
+                ctx.drawImage(img, 0, 0, size, size);
                 document.body.removeChild(tempDiv);
                 resolve(canvas);
-            } else if (img) {
-                // Si generó img en lugar de canvas, crear canvas
-                const newCanvas = document.createElement('canvas');
-                newCanvas.width = size;
-                newCanvas.height = size;
-                const ctx = newCanvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, size, size);
-                
-                const tempImg = new Image();
-                tempImg.onload = function() {
-                    ctx.drawImage(tempImg, 0, 0, size, size);
+            } else {
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, size, size);
                     document.body.removeChild(tempDiv);
-                    resolve(newCanvas);
+                    resolve(canvas);
                 };
-                tempImg.onerror = function() {
+                img.onerror = function() {
                     document.body.removeChild(tempDiv);
                     resolve(null);
                 };
-                tempImg.src = img.src;
-            } else {
-                document.body.removeChild(tempDiv);
-                resolve(null);
             }
-        }, 300);
+        }, 600);
     });
 }
 
@@ -319,5 +376,7 @@ function downloadCanvas(canvas, filename) {
     link.href = canvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => {
+        if (link.parentNode) document.body.removeChild(link);
+    }, 100);
 }
