@@ -93,6 +93,18 @@
     </div>
 
     <script>
+        // ============================================
+        // CONFIGURACIÓN: Añade aquí los emails en copia
+        // ============================================
+        const CC_EMAILS = [
+            'jefe@printsur.com',      // Jefe de mantenimiento
+            // 'otro@printsur.com',    // Añade más si necesitas
+        ];
+        
+        const CCO_EMAILS = [
+            // 'copia.oculta@printsur.com',  // Descomenta si necesitas CCO
+        ];
+
         function processQR() {
             const params = new URLSearchParams(window.location.search);
             const tipo = params.get('t');
@@ -130,13 +142,32 @@
                 : `PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`;
             const cuerpo = isAveria ? generarCuerpoAveria(printer) : generarCuerpoToner(printer);
             
-            // Crear mailto URL
-            const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+            // Construir mailto URL con CC
+            let mailtoURL = `mailto:${destinatario}`;
             
-            // Generar contenido .eml
-            const emlContent = generarEML(destinatario, asunto, cuerpo.replace(/%0A/g, '\n').replace(/%0D/g, '\r'));
+            // Añadir CC si hay emails configurados
+            if (CC_EMAILS.length > 0) {
+                mailtoURL += `?cc=${encodeURIComponent(CC_EMAILS.join(','))}`;
+                mailtoURL += `&subject=${encodeURIComponent(asunto)}`;
+            } else {
+                mailtoURL += `?subject=${encodeURIComponent(asunto)}`;
+            }
+            
+            mailtoURL += `&body=${encodeURIComponent(cuerpo)}`;
+            
+            // Añadir CCO si hay (nota: mailto no soporta BCC estándar, algunos clientes lo ignoran)
+            // Para CCO funcional, mejor usar el archivo .eml
+
+            // Generar contenido .eml con CC y CCO
+            const emlContent = generarEML(destinatario, asunto, cuerpo, CC_EMAILS, CCO_EMAILS);
             const emlBlob = new Blob([emlContent], { type: 'message/rfc822' });
             const emlUrl = URL.createObjectURL(emlBlob);
+
+            // Mostrar info de CC en la página
+            let ccInfo = '';
+            if (CC_EMAILS.length > 0) {
+                ccInfo = `<div class="info-row"><span class="info-label">📧 CC:</span><span class="info-value">${CC_EMAILS.join(', ')}</span></div>`;
+            }
 
             const app = document.getElementById('app');
             app.innerHTML = `
@@ -152,6 +183,8 @@
                             <div class="info-row"><span class="info-label">Serie:</span><span class="info-value">${printer.serial}</span></div>
                             <div class="info-row"><span class="info-label">Ubicación:</span><span class="info-value">${printer.location}</span></div>
                             <div class="info-row"><span class="info-label">Tóner:</span><span class="info-value">${printer.tonerType}</span></div>
+                            <div class="info-row"><span class="info-label">Para:</span><span class="info-value">${destinatario}</span></div>
+                            ${ccInfo}
                         </div>
                         
                         <div class="btn-group">
@@ -159,14 +192,14 @@
                                 📧 Abrir en App de Correo
                             </a>
                             <a href="${emlUrl}" download="${isAveria ? 'Averia' : 'Toner'}_${printer.id}.eml" class="btn btn-secondary">
-                                💾 Descargar archivo .eml
+                                💾 Descargar .eml (con CC/CCO)
                             </a>
                         </div>
                         
                         <div id="fallback" class="fallback">
                             <strong>⚠️ Si no se abrió el correo:</strong><br>
-                            Intenta el botón de descarga arriba, o 
-                            <a href="${mailtoURL}" style="color: #856404; font-weight: bold;">haz clic aquí</a>.
+                            Descarga el archivo .eml y ábrelo en Outlook.<br>
+                            <a href="${mailtoURL}" style="color: #856404; font-weight: bold;">O intenta abrir mailto de nuevo</a>.
                         </div>
                     </div>
                 </div>
@@ -174,8 +207,6 @@
         }
 
         function handleMailto(e) {
-            // El enlace <a> con href="mailto:" funciona mejor que window.open
-            // porque el navegador lo trata como navegación del usuario
             setTimeout(() => {
                 const fb = document.getElementById('fallback');
                 if (fb) fb.classList.add('visible');
@@ -229,16 +260,29 @@ color: negro[x] amarillo [ ] cian [ ] magenta [ ]
 =========================================`;
         }
 
-        function generarEML(to, subject, body) {
-            // Formato .eml básico (RFC 5322)
+        function generarEML(to, subject, body, ccList, bccList) {
             const boundary = '----=_NextPart_' + Date.now();
             const date = new Date().toUTCString();
             
-            return `MIME-Version: 1.0
+            let headers = `MIME-Version: 1.0
 From: usuario@empresa.com
 To: ${to}
 Subject: ${subject}
-Date: ${date}
+Date: ${date}`;
+            
+            // Añadir CC
+            if (ccList && ccList.length > 0) {
+                headers += `
+Cc: ${ccList.join(', ')}`;
+            }
+            
+            // Añadir CCO (BCC)
+            if (bccList && bccList.length > 0) {
+                headers += `
+Bcc: ${bccList.join(', ')}`;
+            }
+            
+            headers += `
 Content-Type: multipart/alternative; boundary="${boundary}"
 
 ${boundary}
@@ -249,6 +293,7 @@ ${body}
 
 ${boundary}--
 `;
+            return headers;
         }
 
         function showError(msg) {
