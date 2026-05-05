@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Reporte Rápido - Impresora</title>
+    <title>Reporte - Impresora</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -19,7 +18,7 @@
         .container {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             max-width: 500px;
             width: 100%;
             overflow: hidden;
@@ -29,240 +28,168 @@
             text-align: center;
             color: white;
         }
-        .header.averia {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        }
-        .header.toner {
-            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
-        }
-        .header h1 { font-size: 1.5rem; margin-bottom: 5px; }
-        .header p { opacity: 0.9; font-size: 0.9rem; }
-        .content { padding: 30px; }
-        .printer-info {
+        .header.averia { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+        .header.toner { background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%); }
+        .header h1 { font-size: 1.4rem; margin-bottom: 5px; }
+        .content { padding: 25px; }
+        .info-box {
             background: #f8f9fa;
             border-radius: 12px;
-            padding: 20px;
+            padding: 18px;
             margin-bottom: 20px;
         }
-        .printer-info h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
+        .info-box h3 { margin-bottom: 12px; color: #333; font-size: 1rem; }
+        .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { color: #666; font-size: 0.9rem; }
-        .info-value {
-            color: #333;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-align: right;
-            flex: 1;
-            margin-left: 10px;
-            word-break: break-word;
-        }
-        .action-section { text-align: center; }
-        .btn-mailto {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            padding: 18px 30px;
+        .info-label { color: #666; font-size: 0.85rem; }
+        .info-value { color: #333; font-weight: 600; font-size: 0.85rem; text-align: right; flex: 1; margin-left: 10px; word-break: break-word; }
+        
+        .btn-group { display: flex; flex-direction: column; gap: 12px; }
+        .btn {
+            padding: 16px 24px;
             border: none;
             border-radius: 12px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: bold;
             color: white;
             cursor: pointer;
             text-decoration: none;
-            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            transition: all 0.3s;
         }
-        .btn-mailto.averia {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+        .btn-primary.averia { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+        .btn-primary.toner { background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%); }
+        .btn-secondary { background: #34495e; }
+        
+        .error { text-align: center; padding: 40px; color: #e74c3c; }
+        .loading { text-align: center; padding: 50px; }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%;
+            animation: spin 1s linear infinite; margin: 0 auto 20px;
         }
-        .btn-mailto.toner {
-            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
-        }
-        .btn-mailto:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-        .manual-note {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff3cd;
-            border-radius: 8px;
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .fallback { 
+            margin-top: 20px; 
+            padding: 15px; 
+            background: #fff3cd; 
+            border-radius: 8px; 
             border-left: 4px solid #ffc107;
-            font-size: 0.85rem;
+            font-size: 0.85rem; 
             color: #856404;
             display: none;
         }
-        .manual-note.visible { display: block; }
-        .error-message {
-            text-align: center;
-            padding: 40px 20px;
-            color: #e74c3c;
-        }
-        .error-message h2 { margin-bottom: 10px; }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #e0e0e0;
-            border-top-color: #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading {
-            text-align: center;
-            padding: 40px 20px;
-        }
-        .loading p { color: #666; margin-top: 15px; }
+        .fallback.visible { display: block; }
     </style>
 </head>
 <body>
     <div id="app">
         <div class="loading">
             <div class="spinner"></div>
-            <p>Cargando información...</p>
+            <p style="color: #666;">Cargando...</p>
         </div>
     </div>
 
     <script>
-        // Procesar parámetros de la URL
         function processQR() {
             const params = new URLSearchParams(window.location.search);
-            
-            // Obtener datos directamente de los parámetros
             const tipo = params.get('t');
-            const printerId = params.get('id');
             const model = params.get('m');
             const serial = params.get('s');
-            const location = params.get('l');
-            const tonerType = params.get('tt');
-            const averiaEmail = params.get('ae');
-            const tonerEmail = params.get('te');
             
-            // Validar datos mínimos
             if (!tipo || !model || !serial) {
-                // Intentar formato antiguo como fallback
                 const qrData = params.get('qr');
-                if (qrData) {
-                    const parts = qrData.split('|');
-                    if (parts.length === 2) {
-                        // Formato antiguo - necesita base de datos
-                        showError('Este QR usa el formato antiguo. Por favor, regenera los QR desde el panel de administración con la nueva versión.');
-                        return;
-                    }
+                if (qrData && qrData.includes('|')) {
+                    showError('Este QR es de la versión antigua. Por favor, regenera los QR desde el panel de administración.');
+                } else {
+                    showError('QR inválido o datos incompletos.');
                 }
-                showError('Datos incompletos en el QR. Asegúrate de escanear un QR generado con la última versión.');
                 return;
             }
             
             const printer = {
-                id: printerId || 'N/A',
+                id: params.get('id') || 'N/A',
                 model: decodeURIComponent(model),
                 serial: decodeURIComponent(serial),
-                location: location ? decodeURIComponent(location) : 'No especificada',
-                tonerType: tonerType ? decodeURIComponent(tonerType) : 'No especificado',
-                averiaEmail: averiaEmail ? decodeURIComponent(averiaEmail) : 'soporte@tuempresa.com',
-                tonerEmail: tonerEmail ? decodeURIComponent(tonerEmail) : 'compras@tuempresa.com'
+                location: params.get('l') ? decodeURIComponent(params.get('l')) : 'No especificada',
+                tonerType: params.get('tt') ? decodeURIComponent(params.get('tt')) : 'No especificado',
+                averiaEmail: params.get('ae') ? decodeURIComponent(params.get('ae')) : 'soporte@tuempresa.com',
+                tonerEmail: params.get('te') ? decodeURIComponent(params.get('te')) : 'compras@tuempresa.com'
             };
             
             renderPage(tipo, printer);
         }
 
-        // Mostrar página con botón de acción
         function renderPage(tipo, printer) {
             const isAveria = tipo === 'averia';
             const destinatario = isAveria ? printer.averiaEmail : printer.tonerEmail;
             const asunto = isAveria 
                 ? `AVERÍA - ${printer.model} - Serie: ${printer.serial}`
                 : `PEDIDO TÓNER - ${printer.model} - Serie: ${printer.serial}`;
-
-            const cuerpo = isAveria 
-                ? generarCuerpoAveria(printer)
-                : generarCuerpoToner(printer);
-
+            const cuerpo = isAveria ? generarCuerpoAveria(printer) : generarCuerpoToner(printer);
+            
+            // Crear mailto URL
             const mailtoURL = `mailto:${destinatario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+            
+            // Generar contenido .eml
+            const emlContent = generarEML(destinatario, asunto, cuerpo.replace(/%0A/g, '\n').replace(/%0D/g, '\r'));
+            const emlBlob = new Blob([emlContent], { type: 'message/rfc822' });
+            const emlUrl = URL.createObjectURL(emlBlob);
 
             const app = document.getElementById('app');
             app.innerHTML = `
                 <div class="container">
                     <div class="header ${isAveria ? 'averia' : 'toner'}">
                         <h1>${isAveria ? '🔴 Reportar Avería' : '🟢 Solicitar Tóner'}</h1>
-                        <p>${printer.model}</p>
+                        <p>${printer.model} — ${printer.id}</p>
                     </div>
-                    
                     <div class="content">
-                        <div class="printer-info">
-                            <h3>📋 Información de la Impresora</h3>
-                            <div class="info-row">
-                                <span class="info-label">ID:</span>
-                                <span class="info-value">${printer.id}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Modelo:</span>
-                                <span class="info-value">${printer.model}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Serie:</span>
-                                <span class="info-value">${printer.serial}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Ubicación:</span>
-                                <span class="info-value">${printer.location}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Tóner:</span>
-                                <span class="info-value">${printer.tonerType}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Destinatario:</span>
-                                <span class="info-value">${destinatario}</span>
-                            </div>
+                        <div class="info-box">
+                            <h3>📋 Datos de la Impresora</h3>
+                            <div class="info-row"><span class="info-label">Modelo:</span><span class="info-value">${printer.model}</span></div>
+                            <div class="info-row"><span class="info-label">Serie:</span><span class="info-value">${printer.serial}</span></div>
+                            <div class="info-row"><span class="info-label">Ubicación:</span><span class="info-value">${printer.location}</span></div>
+                            <div class="info-row"><span class="info-label">Tóner:</span><span class="info-value">${printer.tonerType}</span></div>
                         </div>
-
-                        <div class="action-section">
-                            <a href="${mailtoURL}" class="btn-mailto ${isAveria ? 'averia' : 'toner'}" onclick="handleMailtoClick()">
-                                ${isAveria ? '🔧' : '📦'} Abrir ${isAveria ? 'Reporte de Avería' : 'Solicitud de Tóner'}
+                        
+                        <div class="btn-group">
+                            <a href="${mailtoURL}" class="btn btn-primary ${isAveria ? 'averia' : 'toner'}" onclick="handleMailto(event)">
+                                📧 Abrir en App de Correo
                             </a>
-                            
-                            <div id="manual-note" class="manual-note">
-                                <strong>⚠️ Si no se abrió el correo:</strong><br>
-                                Tu navegador puede estar bloqueando la apertura automática. 
-                                <a href="${mailtoURL}" style="color: #856404; text-decoration: underline; font-weight: bold;">
-                                    Haz clic aquí para abrir manualmente
-                                </a>
-                            </div>
+                            <a href="${emlUrl}" download="${isAveria ? 'Averia' : 'Toner'}_${printer.id}.eml" class="btn btn-secondary">
+                                💾 Descargar archivo .eml
+                            </a>
+                        </div>
+                        
+                        <div id="fallback" class="fallback">
+                            <strong>⚠️ Si no se abrió el correo:</strong><br>
+                            Intenta el botón de descarga arriba, o 
+                            <a href="${mailtoURL}" style="color: #856404; font-weight: bold;">haz clic aquí</a>.
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        function handleMailtoClick() {
+        function handleMailto(e) {
+            // El enlace <a> con href="mailto:" funciona mejor que window.open
+            // porque el navegador lo trata como navegación del usuario
             setTimeout(() => {
-                const note = document.getElementById('manual-note');
-                if (note) note.classList.add('visible');
-            }, 2000);
+                const fb = document.getElementById('fallback');
+                if (fb) fb.classList.add('visible');
+            }, 3000);
         }
 
-        function generarCuerpoAveria(printer) {
+        function generarCuerpoAveria(p) {
             return `=========================================
 📠 REPORTE DE AVERÍA EN IMPRESORA
 =========================================
 
-🖨️ MODELO: ${printer.model}
-🔢 NÚMERO DE SERIE: ${printer.serial}
-📍 UBICACIÓN: ${printer.location}
+🖨️ MODELO: ${p.model}
+🔢 NÚMERO DE SERIE: ${p.serial}
+📍 UBICACIÓN: ${p.location}
 
 ─────────────────────────────────────────
 ⚠️ DESCRIPCIÓN DEL PROBLEMA:
@@ -277,15 +204,15 @@
 =========================================`;
         }
 
-        function generarCuerpoToner(printer) {
+        function generarCuerpoToner(p) {
             return `=========================================
 🖨️ SOLICITUD DE TÓNER
 =========================================
 
-🖨️ MODELO: ${printer.model}
-🔢 NÚMERO DE SERIE: ${printer.serial}
-📍 UBICACIÓN: ${printer.location}
-📦 TÓNER COMPATIBLE: ${printer.tonerType}
+🖨️ MODELO: ${p.model}
+🔢 NÚMERO DE SERIE: ${p.serial}
+📍 UBICACIÓN: ${p.location}
+📦 TÓNER COMPATIBLE: ${p.tonerType}
 
 ─────────────────────────────────────────
 📊 CANTIDAD SOLICITADA:
@@ -302,19 +229,34 @@
 =========================================`;
         }
 
-        function showError(message) {
-            const app = document.getElementById('app');
-            app.innerHTML = `
-                <div class="container">
-                    <div class="error-message">
-                        <h2>❌ Error</h2>
-                        <p>${message}</p>
-                    </div>
-                </div>
+        function generarEML(to, subject, body) {
+            // Formato .eml básico (RFC 5322)
+            const boundary = '----=_NextPart_' + Date.now();
+            const date = new Date().toUTCString();
+            
+            return `MIME-Version: 1.0
+From: usuario@empresa.com
+To: ${to}
+Subject: ${subject}
+Date: ${date}
+Content-Type: multipart/alternative; boundary="${boundary}"
+
+${boundary}
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+${body}
+
+${boundary}--
+`;
+        }
+
+        function showError(msg) {
+            document.getElementById('app').innerHTML = `
+                <div class="container"><div class="error"><h2>❌ Error</h2><p>${msg}</p></div></div>
             `;
         }
 
-        // Iniciar
         processQR();
     </script>
 </body>
