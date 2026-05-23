@@ -1,18 +1,44 @@
 // Variables globales
 let printers = [];
 
-// Cargar impresoras desde el archivo JSON central (GitHub)
+// Cargar impresoras combinando JSON central + localStorage
 async function loadPrinters() {
+    let mergedPrinters = [];
+    
+    // 1. Cargar desde JSON central (GitHub)
     try {
         const response = await fetch('../data/impresoras.json?t=' + new Date().getTime());
-        printers = await response.json();
-        updatePrintersList();
-        updatePrinterSelect();
-        console.log('✅ Impresoras cargadas desde JSON central:', printers.length);
+        const jsonPrinters = await response.json();
+        mergedPrinters = [...jsonPrinters];
+        console.log('✅ Impresoras cargadas desde JSON central:', jsonPrinters.length);
     } catch (error) {
-        console.error('Error cargando impresoras:', error);
-        // Datos de respaldo por si falla la carga
-        printers = [
+        console.error('Error cargando impresoras desde JSON:', error);
+        // Si falla, seguimos con array vacío
+    }
+    
+    // 2. Cargar desde localStorage (impresoras agregadas en este dispositivo)
+    const stored = localStorage.getItem('impresoras');
+    if (stored) {
+        try {
+            const localPrinters = JSON.parse(stored);
+            // Merge: las locales sobrescriben a las del JSON si tienen mismo ID
+            localPrinters.forEach(localP => {
+                const index = mergedPrinters.findIndex(p => p.id === localP.id);
+                if (index >= 0) {
+                    mergedPrinters[index] = localP; // Actualizar existente
+                } else {
+                    mergedPrinters.push(localP); // Añadir nueva
+                }
+            });
+            console.log('✅ Impresoras locales mergeadas:', localPrinters.length);
+        } catch (e) {
+            console.error('Error parseando localStorage:', e);
+        }
+    }
+    
+    // 3. Respaldo si todo está vacío
+    if (mergedPrinters.length === 0) {
+        mergedPrinters = [
             {
                 "id": "IM001",
                 "serial": "4064433113CMN",
@@ -23,21 +49,21 @@ async function loadPrinters() {
                 "tonerEmail": "avisos@printsur.com"
             }
         ];
-        updatePrintersList();
-        updatePrinterSelect();
-        alert('⚠️ Usando datos locales. Verifica que el archivo data/impresoras.json existe en GitHub.');
+        console.warn('⚠️ Usando datos de respaldo');
     }
+    
+    printers = mergedPrinters;
+    updatePrintersList();
+    updatePrinterSelect();
 }
 
-// Guardar impresoras (solo temporal, para pruebas)
-// Para cambios permanentes, edita data/impresoras.json en GitHub
+// Guardar impresoras en localStorage (persistente en el navegador)
 function savePrinters() {
-    // Guardar copia en localStorage como respaldo
-    localStorage.setItem('impresoras_backup', JSON.stringify(printers));
-    console.warn('⚠️ Los cambios son temporales. Para cambios permanentes, edita data/impresoras.json en GitHub');
+    localStorage.setItem('impresoras', JSON.stringify(printers));
+    console.log('💾 Impresoras guardadas en localStorage');
 }
 
-// Agregar nueva impresora (solo temporal)
+// Agregar nueva impresora
 function addPrinter() {
     const newPrinter = {
         id: document.getElementById('printer-id').value.trim().toUpperCase(),
@@ -78,8 +104,9 @@ function addPrinter() {
 function showTempPrinterAlert(newPrinter) {
     const jsonText = JSON.stringify(printers, null, 4);
     const confirmSave = confirm(
-        `✅ Impresora ${newPrinter.id} agregada TEMPORALMENTE.\n\n` +
-        `Para que sea PERMANENTE y todos los dispositivos la vean:\n\n` +
+        `✅ Impresora ${newPrinter.id} agregada y guardada en este dispositivo.\n\n` +
+        `Se mantendrá incluso si cierras y vuelves a abrir la página.\n\n` +
+        `Para que sea PERMANENTE en GitHub (todos los dispositivos la vean):\n\n` +
         `1. Ve a: https://github.com/cecofarmangel-cmyk/impresoras-app/blob/main/data/impresoras.json\n` +
         `2. Haz clic en el lápiz (editar)\n` +
         `3. Reemplaza el contenido con este JSON:\n\n` +
@@ -126,12 +153,15 @@ function updatePrintersList() {
     
     if (printers.length === 0) {
         container.innerHTML = '<p style="text-align:center; color:#999;">No hay impresoras registradas</p>';
+        // Limpiar botón de exportar si existe
+        const oldExport = document.getElementById('export-github-btn');
+        if (oldExport) oldExport.remove();
         return;
     }
     
     container.innerHTML = printers.map(printer => `
         <div class="printer-card">
-            <button class="delete-btn" onclick="deletePrinter('${printer.id}')" title="Eliminar (solo temporal)">🗑️</button>
+            <button class="delete-btn" onclick="deletePrinter('${printer.id}')" title="Eliminar (solo de este dispositivo)">🗑️</button>
             <h3>${printer.id} - ${printer.model}</h3>
             <p><strong>🔢 Serie:</strong> ${printer.serial}</p>
             <p><strong>📍 Ubicación:</strong> ${printer.location}</p>
@@ -141,16 +171,20 @@ function updatePrintersList() {
         </div>
     `).join('');
     
-    // Añadir botón para exportar a GitHub
-    const exportBtn = document.createElement('div');
-    exportBtn.style.textAlign = 'center';
-    exportBtn.style.marginTop = '20px';
-    exportBtn.innerHTML = `
-        <button onclick="exportToGitHub()" style="padding:10px 20px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer;">
-            📋 Exportar todas las impresoras a GitHub
-        </button>
-    `;
-    container.parentElement.appendChild(exportBtn);
+    // Añadir botón para exportar a GitHub (solo si no existe ya)
+    let exportBtn = document.getElementById('export-github-btn');
+    if (!exportBtn) {
+        exportBtn = document.createElement('div');
+        exportBtn.id = 'export-github-btn';
+        exportBtn.style.textAlign = 'center';
+        exportBtn.style.marginTop = '20px';
+        exportBtn.innerHTML = `
+            <button onclick="exportToGitHub()" style="padding:10px 20px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer;">
+                📋 Exportar todas las impresoras a GitHub
+            </button>
+        `;
+        container.parentElement.appendChild(exportBtn);
+    }
 }
 
 // Exportar todas las impresoras al portapapeles para GitHub
@@ -160,14 +194,14 @@ function exportToGitHub() {
     alert('📋 JSON copiado al portapapeles.\n\n1. Ve a: https://github.com/cecofarmangel-cmyk/impresoras-app/blob/main/data/impresoras.json\n2. Haz clic en editar (lápiz)\n3. Pega el contenido\n4. Commit changes');
 }
 
-// Eliminar impresora (solo temporalmente)
+// Eliminar impresora (solo del dispositivo local)
 function deletePrinter(id) {
-    if (confirm(`¿Eliminar impresora ${id}? (solo temporalmente, no afecta al archivo JSON de GitHub)`)) {
+    if (confirm(`¿Eliminar impresora ${id}? (solo de este dispositivo, no afecta al archivo JSON de GitHub)`)) {
         printers = printers.filter(p => p.id !== id);
         savePrinters();
         updatePrintersList();
         updatePrinterSelect();
-        alert(`✅ Impresora ${id} eliminada TEMPORALMENTE. Para eliminarla permanentemente, edita el JSON en GitHub.`);
+        alert(`✅ Impresora ${id} eliminada de este dispositivo.`);
     }
 }
 
@@ -186,11 +220,15 @@ function updatePrinterSelect() {
     });
 }
 
-// Función manual para refrescar datos desde GitHub
+// Función manual para refrescar datos desde GitHub (descarta locales)
 async function refreshFromGitHub() {
+    if (!confirm('⚠️ Esto recargará solo las impresoras de GitHub. ¿Perder las agregadas localmente?')) {
+        return;
+    }
+    localStorage.removeItem('impresoras');
     alert('Recargando impresoras desde GitHub...');
     await loadPrinters();
-    alert(`✅ Recargadas ${printers.length} impresoras`);
+    alert(`✅ Recargadas ${printers.length} impresoras desde GitHub`);
 }
 
 // Inicializar al cargar la página
