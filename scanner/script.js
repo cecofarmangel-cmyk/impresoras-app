@@ -10,17 +10,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     startScanner();
 });
 
-// Cargar impresoras desde localStorage o archivo
+// Cargar impresoras desde localStorage o archivo JSON
 async function loadPrinters() {
     const stored = localStorage.getItem('impresoras');
     
     if (stored) {
-        const printers = JSON.parse(stored);
+        try {
+            const printers = JSON.parse(stored);
+            printersDB = {};
+            printers.forEach(printer => {
+                printersDB[printer.id] = printer;
+            });
+            updateStatus(`✅ ${Object.keys(printersDB).length} impresoras cargadas`, 'success');
+            return;
+        } catch (e) {
+            console.error('Error parseando localStorage:', e);
+        }
+    }
+    
+    // Si no hay localStorage, intentar cargar desde JSON central
+    try {
+        const response = await fetch('../data/impresoras.json?t=' + new Date().getTime());
+        const printers = await response.json();
+        printersDB = {};
         printers.forEach(printer => {
             printersDB[printer.id] = printer;
         });
-        updateStatus(`✅ ${Object.keys(printersDB).length} impresoras cargadas`, 'success');
-    } else {
+        updateStatus(`✅ ${Object.keys(printersDB).length} impresoras cargadas desde servidor`, 'success');
+    } catch (error) {
+        console.error('Error cargando JSON:', error);
         updateStatus('⚠️ Usando datos de ejemplo. Ve al panel de administración para agregar tus impresoras.', 'error');
         
         const ejemplo = [
@@ -28,6 +46,7 @@ async function loadPrinters() {
             { id: "P002", serial: "SN987654321", model: "Brother HL-L2350DW", location: "Recepción", tonerType: "Brother TN-760", averiaEmail: "soporte@tuempresa.com", tonerEmail: "compras@tuempresa.com" }
         ];
         
+        printersDB = {};
         ejemplo.forEach(printer => {
             printersDB[printer.id] = printer;
         });
